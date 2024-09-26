@@ -1,7 +1,9 @@
 package ru.gleb.FirstApp.controller;
 
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -10,57 +12,71 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import ru.gleb.FirstApp.exception.UnsupportedCodeException;
 import ru.gleb.FirstApp.exception.ValidationFailedException;
-import ru.gleb.FirstApp.model.Request;
-import ru.gleb.FirstApp.model.Response;
+import ru.gleb.FirstApp.model.*;
+import ru.gleb.FirstApp.service.ModifyResponseService;
 import ru.gleb.FirstApp.service.ValidationService;
+import ru.gleb.FirstApp.util.DateTimeUtils;
 
-import java.text.SimpleDateFormat;
 import java.util.Date;
 
+@Slf4j
 @RestController
 public class L2Controller {
 
     private final ValidationService validationService;
+    private final ModifyResponseService modifyResponseService;
 
     @Autowired
-    public L2Controller(ValidationService validationService) {
+    public L2Controller(
+        ValidationService validationService,
+        @Qualifier("ModifySystemTimeResponseService") ModifyResponseService modifyResponseService
+    ) {
         this.validationService = validationService;
+        this.modifyResponseService = modifyResponseService;
     }
 
     @PostMapping(value = "/feedback")
     public ResponseEntity<Response> feedback(@Valid @RequestBody Request request, BindingResult bindingResult) {
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        log.info("request: {}", request);
 
         Response response = Response.builder()
             .uid(request.getUid())
             .operationUid(request.getOperationUid())
-            .systemTime(simpleDateFormat.format(new Date()))
-            .code("success")
-            .errorCode("")
-            .errorMessage("")
+            .systemTime(DateTimeUtils.getCustomFormat().format(new Date()))
+            .code(Codes.SUCCESS)
+            .errorCode(ErrorCodes.EMPTY)
+            .errorMessage(ErrorMessages.EMPTY)
             .build();
 
         try {
             validationService.isValid(bindingResult);
         } catch (ValidationFailedException exception) {
-            response.setCode("failed");
-            response.setErrorCode("ValidationException");
-            response.setErrorMessage("Ошибка валидации");
+            response.setCode(Codes.FAILED);
+            response.setErrorCode(ErrorCodes.VALIDATION_EXCEPTION);
+            response.setErrorMessage(ErrorMessages.VALIDATION);
+
+            log.info("response: {}", response);
 
             return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         } catch (UnsupportedCodeException exception) {
-            response.setCode("failed");
-            response.setErrorCode("UnsupportedException");
-            response.setErrorMessage(String.format("[%s] Некорректное значение поля 'uid'", response.getErrorCode()));
+            response.setCode(Codes.FAILED);
+            response.setErrorCode(ErrorCodes.UNSUPPORTED_EXCEPTION);
+            response.setErrorMessage(ErrorMessages.UNSUPPORTED);
+
+            log.info("response: {}", response);
 
             return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
         } catch (Exception exception) {
-            response.setCode("failed");
-            response.setErrorCode("UnknownException");
-            response.setErrorMessage("Произошла непредвиденная ошибка");
+            response.setCode(Codes.FAILED);
+            response.setErrorCode(ErrorCodes.UNKNOWN_EXCEPTION);
+            response.setErrorMessage(ErrorMessages.UNKNOWN);
+
+            log.info("response: {}", response);
 
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
+
+        modifyResponseService.modify(response);
 
         return new ResponseEntity<>(response, HttpStatus.OK);
     }

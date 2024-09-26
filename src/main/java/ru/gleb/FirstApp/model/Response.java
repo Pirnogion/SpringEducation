@@ -10,7 +10,18 @@ public class Response {
     private String uid;
     private String operationUid;
     private String systemTime;
-    private String code;
-    private String errorCode;
-    private String errorMessage;
+    private Codes code;
+    private ErrorCodes errorCode;
+    private ErrorMessages errorMessage;
+
+    public String toString() {
+        return  "{" +
+                "uid='" + uid + '\'' +
+                ", operationUid='" + operationUid + '\'' +
+                ", systemTime='" + systemTime + '\'' +
+                ", code='" + code + '\'' +
+                ", errorCode='" + errorCode + '\'' +
+                ", errorMessage='" + errorMessage + '\'' +
+                "}";
+    }
 }
