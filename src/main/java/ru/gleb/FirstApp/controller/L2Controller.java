@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import ru.gleb.FirstApp.exception.UnsupportedCodeException;
 import ru.gleb.FirstApp.exception.ValidationFailedException;
 import ru.gleb.FirstApp.model.*;
+import ru.gleb.FirstApp.service.ModifyRequestService;
 import ru.gleb.FirstApp.service.ModifyResponseService;
 import ru.gleb.FirstApp.service.ValidationService;
 import ru.gleb.FirstApp.util.DateTimeUtils;
@@ -25,14 +26,17 @@ public class L2Controller {
 
     private final ValidationService validationService;
     private final ModifyResponseService modifyResponseService;
+    private final ModifyRequestService modifyRequestService;
 
     @Autowired
     public L2Controller(
         ValidationService validationService,
-        @Qualifier("ModifySystemTimeResponseService") ModifyResponseService modifyResponseService
+        @Qualifier("ModifySystemTimeResponseService") ModifyResponseService modifyResponseService,
+        @Qualifier("ModifySourceRequestService") ModifyRequestService modifyRequestService
     ) {
         this.validationService = validationService;
         this.modifyResponseService = modifyResponseService;
+        this.modifyRequestService = modifyRequestService;
     }
 
     @PostMapping(value = "/feedback")
@@ -77,6 +81,7 @@ public class L2Controller {
         }
 
         modifyResponseService.modify(response);
+        modifyRequestService.modify(request);
 
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
