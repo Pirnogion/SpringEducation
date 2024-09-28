@@ -28,8 +28,8 @@ public class L2Controller {
 
     @Autowired
     public L2Controller(
-        ValidationService validationService,
-        @Qualifier("ModifySystemTimeResponseService") ModifyResponseService modifyResponseService
+            ValidationService validationService,
+            @Qualifier("ModifySystemTimeResponseService") ModifyResponseService modifyResponseService
     ) {
         this.validationService = validationService;
         this.modifyResponseService = modifyResponseService;
@@ -37,16 +37,21 @@ public class L2Controller {
 
     @PostMapping(value = "/feedback")
     public ResponseEntity<Response> feedback(@Valid @RequestBody Request request, BindingResult bindingResult) {
+        var current = new Date();
+        var previous = DateTimeUtils.parseCustomFormat(request.getSystemTime());
+        var difference = (current.getTime() - previous.getTime()) / 1000000000d;
+        log.debug("time: {} s", difference);
+
         log.info("request: {}", request);
 
         Response response = Response.builder()
-            .uid(request.getUid())
-            .operationUid(request.getOperationUid())
-            .systemTime(DateTimeUtils.getCustomFormat().format(new Date()))
-            .code(Codes.SUCCESS)
-            .errorCode(ErrorCodes.EMPTY)
-            .errorMessage(ErrorMessages.EMPTY)
-            .build();
+                .uid(request.getUid())
+                .operationUid(request.getOperationUid())
+                .systemTime(DateTimeUtils.getCustomFormat().format(new Date()))
+                .code(Codes.SUCCESS)
+                .errorCode(ErrorCodes.EMPTY)
+                .errorMessage(ErrorMessages.EMPTY)
+                .build();
 
         try {
             validationService.isValid(bindingResult);
