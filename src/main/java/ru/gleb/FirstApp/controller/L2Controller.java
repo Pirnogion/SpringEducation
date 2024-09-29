@@ -10,12 +10,9 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-import ru.gleb.FirstApp.exception.UnsupportedCodeException;
-import ru.gleb.FirstApp.exception.ValidationFailedException;
+import ru.gleb.FirstApp.exception.ValidationServiceException;
 import ru.gleb.FirstApp.model.*;
-import ru.gleb.FirstApp.service.ModifyRequestService;
-import ru.gleb.FirstApp.service.ModifyResponseService;
-import ru.gleb.FirstApp.service.ValidationService;
+import ru.gleb.FirstApp.service.*;
 import ru.gleb.FirstApp.util.DateTimeUtils;
 
 import java.util.Date;
@@ -27,16 +24,22 @@ public class L2Controller {
     private final ValidationService validationService;
     private final ModifyResponseService modifyResponseService;
     private final ModifyRequestService modifyRequestService;
+    private final AnnualBonusService annualBonusService;
+    private final QuarterlyBonusService quarterlyBonusService;
 
     @Autowired
     public L2Controller(
         ValidationService validationService,
         @Qualifier("ModifySystemTimeResponseService") ModifyResponseService modifyResponseService,
-        @Qualifier("ModifySourceRequestService") ModifyRequestService modifyRequestService
+        @Qualifier("ModifySourceRequestService") ModifyRequestService modifyRequestService,
+        AnnualBonusService annualBonusService,
+        QuarterlyBonusService quarterlyBonusService
     ) {
         this.validationService = validationService;
         this.modifyResponseService = modifyResponseService;
         this.modifyRequestService = modifyRequestService;
+        this.annualBonusService = annualBonusService;
+        this.quarterlyBonusService = quarterlyBonusService;
     }
 
     @PostMapping(value = "/feedback")
@@ -54,22 +57,14 @@ public class L2Controller {
 
         try {
             validationService.isValid(bindingResult);
-        } catch (ValidationFailedException exception) {
-            response.setCode(Codes.FAILED);
-            response.setErrorCode(ErrorCodes.VALIDATION_EXCEPTION);
-            response.setErrorMessage(ErrorMessages.VALIDATION);
+        } catch (ValidationServiceException exception) {
+            response.setCode(exception.getCode());
+            response.setErrorCode(exception.getErrorCode());
+            response.setErrorMessage(exception.getErrorMessage());
 
             log.info("response: {}", response);
 
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
-        } catch (UnsupportedCodeException exception) {
-            response.setCode(Codes.FAILED);
-            response.setErrorCode(ErrorCodes.UNSUPPORTED_EXCEPTION);
-            response.setErrorMessage(ErrorMessages.UNSUPPORTED);
-
-            log.info("response: {}", response);
-
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(response, exception.getHttpStatus());
         } catch (Exception exception) {
             response.setCode(Codes.FAILED);
             response.setErrorCode(ErrorCodes.UNKNOWN_EXCEPTION);
@@ -79,6 +74,9 @@ public class L2Controller {
 
             return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
+
+        response.setAnnualBonus(annualBonusService.calculate(request.getPosition(), request.getSalary(), request.getBonus(), request.getWorkDays()));
+        response.setQuarterlyBonus(quarterlyBonusService.calculate(request.getPosition(), request.getSalary(), request.getBonus(), request.getWorkDays()));
 
         modifyResponseService.modify(response);
         modifyRequestService.modify(request);
